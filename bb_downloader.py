@@ -430,7 +430,7 @@ def prompt_url():
 
 def prompt_extensions():
     print("\nFile types to download (space-separated, e.g: .pdf .pptx .docx)")
-    print("Press Enter for PDF only:")
+    print("Press Enter for PDF PPT(x) DOC(x) XLS(x) ZIP MP4 TXT :")
     raw = input("  > ").strip()
     if not raw:
         return DEFAULT_EXTENSIONS
