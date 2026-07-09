@@ -31,7 +31,19 @@ FOLDER_HANDLERS = {
     "resource/x-bb-lesson",
 }
 
-DEFAULT_EXTENSIONS = {".pdf"}
+#DEFAULT_EXTENSIONS = {".pdf"}
+DEFAULT_EXTENSIONS = {
+    ".pdf",
+    ".ppt",
+    ".pptx",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".zip",
+    ".mp4",
+    ".txt"
+}
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
