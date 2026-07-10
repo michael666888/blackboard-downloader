@@ -9,6 +9,7 @@ import re
 import json
 import argparse
 from pathlib import Path
+import time
 from urllib.parse import urljoin, urlparse, unquote
 
 import requests
@@ -318,8 +319,37 @@ def _extract_from_body(body, base_url, extensions):
             try:
                 info = json.loads(bbfile)
                 filename = info.get("displayName") or info.get("linkName", "")
+
+                ###
+                #if "How to access MS Teams" in filename:
+                #    print(json.dumps(info, indent=2))
+                # if filename.endswith(".mp4"):
+                #     print("=" * 80)
+                #     print(json.dumps(info, indent=2))
+                #     print("href =", a.get("href"))
+                #     print("=" * 80)
+
                 mime = info.get("mimeType", "")
-                url = info.get("resourceUrl") or a.get("href", "")
+                #url = info.get("resourceUrl") or a.get("href", "")
+
+                if mime.startswith("video/"):
+                    # 视频优先使用 href（bbcswebdav）
+                    url = (
+                        a.get("href")
+                        or info.get("viewerUrl")
+                        or info.get("downloadUrl")
+                        or info.get("resourceUrl")
+                        or ""
+                    )
+                else:
+                    url = (
+                        info.get("viewerUrl")
+                        or info.get("downloadUrl")
+                        or a.get("href")
+                        or info.get("resourceUrl")
+                        or ""
+                    )
+
                 if url and _matches(filename, mime, extensions):
                     files.append({"url": url, "filename": filename})
             except (json.JSONDecodeError, AttributeError):
@@ -334,7 +364,6 @@ def _extract_from_body(body, base_url, extensions):
             files.append({"url": urljoin(base_url, href), "filename": filename})
 
     return files
-
 
 def _matches(filename, mime, extensions):
     """Check if a file matches the requested extensions."""
@@ -359,8 +388,20 @@ def download_file(session, url, dest_path: Path):
         print(f"    skip (exists): {dest_path.name}")
         return False
 
-    resp = session.get(url, stream=True, allow_redirects=True)
-    if resp.status_code != 200:
+    # resp = session.get(url, stream=True, allow_redirects=True)
+    for attempt in range(3):
+        resp = session.get(
+            url,
+            stream=True,
+            allow_redirects=True,
+            timeout=60,
+        )
+
+        if resp.status_code == 200:
+            break
+
+        time.sleep(2)
+    else:
         print(f"    failed ({resp.status_code}): {dest_path.name}")
         return False
 
@@ -422,7 +463,12 @@ Examples:
 
 def prompt_url():
     print("Enter your Blackboard domain (e.g. learn.bu.edu):")
-    raw = input("  > ").strip().rstrip("/")
+    print("Or press Enter for blackboard.sit.ac.nz")
+
+    raw = input(" > ")
+    if not raw:
+        raw = "blackboard.sit.ac.nz" 
+    raw = raw.strip().rstrip("/")
     if not raw.startswith("http"):
         raw = f"https://{raw}"
     return raw
@@ -463,7 +509,11 @@ def main():
 
     # Launch browser for login
     options = Options()
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    try:
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    except Exception as e:
+        print(f"Error occurred while initializing Chrome driver: {e}")
+        return
 
     try:
         wait_for_login(driver, base_url)
