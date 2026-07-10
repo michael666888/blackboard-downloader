@@ -352,8 +352,8 @@ def _extract_from_body(body, base_url, extensions):
 
                 if url and _matches(filename, mime, extensions):
                     files.append({"url": url, "filename": filename})
-            except (json.JSONDecodeError, AttributeError):
-                pass
+            except (json.JSONDecodeError, AttributeError) as e:
+                print(f"Warning: failed to parse Blackboard link: {e}")
             continue
 
         href = a.get("href", "")
@@ -377,6 +377,11 @@ def _matches(filename, mime, extensions):
         "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
         "application/msword": ".doc",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+        "application/zip": ".zip",
+        "video/mp4": ".mp4",
+        "text/plain": ".txt",
+        "application/vnd.ms-excel": ".xls",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
     }
     return mime_map.get(mime, "") in extensions
 
@@ -417,7 +422,8 @@ def download_file(session, url, dest_path: Path):
     dest_path.parent.mkdir(parents=True, exist_ok=True)
     with open(dest_path, "wb") as f:
         for chunk in resp.iter_content(chunk_size=8192):
-            f.write(chunk)
+            if chunk:
+                f.write(chunk)
     print(f"    downloaded: {dest_path.name}")
     return True
 
@@ -518,7 +524,6 @@ def main():
     try:
         wait_for_login(driver, base_url)
         session = get_session_from_browser(driver)
-        driver.quit()
 
         print("\nFetching user info...")
         user_id = get_my_user_id(session, base_url)
